@@ -1,0 +1,8 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.ervisio-core/
+*.tar.gz
+*.sha256
+.DS_Store

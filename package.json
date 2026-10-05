@@ -1,0 +1,30 @@
+{
+  "name": "ervisio-plugin-ai",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ervisio/plugin-ai.git"
+  },
+  "homepage": "https://github.com/Ervisio/plugin-ai",
+  "scripts": {
+    "build": "node scripts/clean-pycache.mjs && tsc --noEmit && vite build && ervisio-plugin-pack copy",
+    "dev": "node scripts/clean-pycache.mjs && ervisio-plugin-pack copy && vite build --watch",
+    "pack": "node scripts/clean-pycache.mjs && ervisio-plugin-pack pack",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:ui && npm run test:engine && npm run test:connect",
+    "test:ui": "node --test \"test/**/*.test.ts\"",
+    "test:engine": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/engine -p 'test_*.py'",
+    "test:connect": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/connect -p 'test_*.py'",
+    "check": "node scripts/check-release.mjs && python3 -B scripts/gen-tools-doc.py --check",
+    "docs": "python3 -B scripts/gen-tools-doc.py"
+  },
+  "devDependencies": {
+    "@ervisio/plugin-sdk": "github:Ervisio/plugin-sdk#v0.2.0",
+    "@types/react": "^18.3.31",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.2"
+  }
+}

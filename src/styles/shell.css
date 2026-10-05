@@ -1,0 +1,53 @@
+/* Inner shell: sidebar + main, like the other plugins. */
+.ai-shell { display: flex; gap: 14px; align-items: flex-start; }
+.ai-nav { width: 220px; flex: none; background: var(--surface); border-radius: var(--r-card); padding: 12px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; }
+.ai-nav-gl { font-size: 12px; color: var(--ink3); font-weight: 700; margin: 12px 10px 4px; }
+.ai-nav-gl:first-child { margin-top: 2px; }
+.ai-nav-it { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r-btn); color: var(--ink2); font: inherit; font-weight: 700; background: none; border: 0; cursor: pointer; text-align: left; width: 100%; }
+.ai-nav-it .ui-icon { width: 17px; height: 17px; flex: none; }
+.ai-nav-it b { margin-left: auto; font-size: 12px; color: var(--ink3); font-weight: 700; }
+.ai-nav-it:hover { background: var(--sunk); color: var(--ink); }
+.ai-nav-it[aria-current='page'] { background: var(--acc-s); color: var(--acc); }
+.ai-nav-it[aria-current='page'] b { color: inherit; }
+.ai-nav-ft { margin: 14px 10px 4px; display: flex; align-items: flex-start; gap: 8px; color: var(--ink3); font-size: 12px; font-weight: 600; line-height: 1.4; }
+.ai-nav-ft .ai-dot { margin-top: 4px; }
+.ai-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.ai-view { display: flex; flex-direction: column; min-width: 0; }
+
+@media (max-width: 900px) {
+  .ai-shell { flex-direction: column; gap: 10px; }
+  .ai-nav { width: 100%; flex-direction: row; overflow-x: auto; padding: 8px; gap: 6px; position: static; scrollbar-width: none; }
+  .ai-nav::-webkit-scrollbar { display: none; }
+  .ai-nav-gl, .ai-nav-ft { display: none; }
+  .ai-nav-it { width: auto; flex: none; white-space: nowrap; padding: 7px 12px; border-radius: 10px; background: var(--sunk); }
+  .ai-main { width: 100%; }
+}
+
+/* The chat page uses the whole height of the panel; only the transcript scrolls. */
+.ai-root--fill { height: 100vh; padding-bottom: 16px; display: flex; flex-direction: column; }
+.ai-root--fill .ai-shell { flex: 1; min-height: 0; align-items: stretch; }
+.ai-root--fill .ai-nav { position: static; align-self: flex-start; }
+.ai-root--fill .ai-main, .ai-root--fill .ai-view { flex: 1; min-height: 0; }
+@media (max-width: 900px) { .ai-root--fill .ai-shell { flex-direction: column; } }
+
+/* Welcome */
+.ai-welcome { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; padding-top: 12px; }
+.ai-welcome h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15; }
+.ai-welcome > p { margin: 0; color: var(--ink2); font-size: 15px; line-height: 1.55; max-width: 720px; }
+.ai-choose { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .ai-choose { grid-template-columns: 1fr; } }
+.ai-choice { background: var(--sunk); border-radius: 22px; padding: 22px; display: flex; flex-direction: column; gap: 14px; text-align: left; border: 0; font: inherit; color: var(--ink); cursor: pointer; transition: transform 0.15s, background 0.15s; position: relative; }
+.ai-choice:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--sunk) 88%, var(--h, var(--acc))); }
+.ai-choice:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.ai-choice-ic { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; background: var(--s); color: var(--h); }
+.ai-choice-ic .ui-icon { width: 26px; height: 26px; }
+.ai-choice h2 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.015em; }
+.ai-choice p { margin: 0; color: var(--ink2); font-size: 14px; line-height: 1.55; }
+.ai-choice ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--ink2); }
+.ai-choice li { display: flex; gap: 8px; align-items: flex-start; }
+.ai-choice li .ui-icon { width: 15px; height: 15px; color: var(--h); flex: none; margin-top: 2px; }
+.ai-choice-go { margin-top: auto; display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--h); }
+@media (prefers-reduced-motion: reduce) { .ai-choice { transition: none; } .ai-choice:hover { transform: none; } }
+.ai-caps { display: flex; gap: 8px; flex-wrap: wrap; }
+.ai-caps span { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 10px; background: var(--sunk); color: var(--ink2); }
+.ai-caps .ui-icon { width: 14px; height: 14px; }
