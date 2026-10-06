@@ -19,7 +19,8 @@
     "test:engine": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/engine -p 'test_*.py'",
     "test:connect": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/connect -p 'test_*.py'",
     "check": "node scripts/check-release.mjs && python3 -B scripts/gen-tools-doc.py --check",
-    "docs": "python3 -B scripts/gen-tools-doc.py"
+    "docs": "python3 -B scripts/gen-tools-doc.py",
+    "version": "node scripts/sync-version.mjs"
   },
   "devDependencies": {
     "@ervisio/plugin-sdk": "github:Ervisio/plugin-sdk#v0.2.0",
