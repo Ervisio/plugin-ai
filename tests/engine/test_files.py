@@ -1,5 +1,6 @@
 import base64
 import os
+import pwd
 import stat
 import unittest
 
@@ -279,7 +280,11 @@ class Manage(EngineCase):
         self.write("d/a", "")
         self.ok("fs_manage", action="chmod", path=self.path("d"), mode="700", recursive=True)
         self.assertEqual(stat.S_IMODE(os.stat(self.path("d", "a")).st_mode), 0o700)
-        self.ok("fs_manage", action="chown", path=self.path("d"), owner="root", recursive=True)
+        owner = pwd.getpwuid(os.geteuid()).pw_name
+        self.ok("fs_manage", action="chown", path=self.path("d"), owner=owner, recursive=True)
+        self.assertEqual(os.stat(self.path("d", "a")).st_uid, os.geteuid())
+        if os.geteuid() != 0:
+            self.assertIn("Permission denied", self.err("fs_manage", action="chown", path=self.path("d"), owner="root", recursive=True))
         self.ok("fs_manage", action="symlink", path=self.path("l"), dest=self.path("d"))
         self.assertEqual(os.readlink(self.path("l")), self.path("d"))
         self.assertIn("mode is required", self.err("fs_manage", action="chmod", path=self.path("d")))
@@ -338,3 +343,4 @@ class Diff(EngineCase):
 
 if __name__ == "__main__":
     unittest.main()
+

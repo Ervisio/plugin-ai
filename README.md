@@ -214,12 +214,11 @@ More in [docs/architecture.md](docs/architecture.md).
 
 ## Releasing
 
-1. Set the version in `plugin/manifest.json`, `package.json`, `plugin/engine/ervisio_ai/__init__.py` and
-   `plugin/connect/ervisio-ai-connect.py`, and add a `## X.Y.Z` section to `CHANGELOG.md` (`npm run check` verifies all of it).
-2. Commit, then `git tag -a vX.Y.Z -m "X.Y.Z" && git push origin vX.Y.Z`.
-3. The release workflow builds, validates the manifest with Ervisio's validator, and publishes `ai-X.Y.Z.tar.gz` and `.sha256`.
-4. The [Ervisio plugin registry](https://github.com/Ervisio/plugins) picks up the release, signs it, and lists it in the
-   marketplace catalog.
+On GitHub: **Actions › Release › Run workflow**, choose `patch`, `minor` or `major`, optionally type the release notes
+(empty: the commit subjects since the last release), and run it. The workflow bumps the version, writes the
+`CHANGELOG.md` section, tags, builds, validates and releases, then tells the Ervisio registry: an update that asks for
+no new permissions is in the marketplace a few minutes later. The steps live in
+[Ervisio/plugin-sdk](https://github.com/Ervisio/plugin-sdk/blob/main/docs/publishing.md).
 
 ## License
 
