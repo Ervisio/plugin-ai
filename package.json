@@ -20,6 +20,8 @@
     "test:connect": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/connect -p 'test_*.py'",
     "check": "node scripts/check-release.mjs && python3 -B scripts/gen-tools-doc.py --check",
     "docs": "python3 -B scripts/gen-tools-doc.py",
+    "release": "node .github/release.mjs",
+    "marketplace": "node .github/release.mjs register",
     "version": "node scripts/sync-version.mjs"
   },
   "devDependencies": {
