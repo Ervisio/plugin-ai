@@ -2,10 +2,11 @@ import json
 import os
 import time
 import unittest
+from unittest import mock
 
 from helpers import EngineCase
 
-from ervisio_ai import audit, auth, policy, registry
+from ervisio_ai import audit, auth, policy, registry, proc
 from ervisio_ai.util import redact, redact_text
 
 
@@ -36,7 +37,8 @@ class Validation(EngineCase):
         self.assertIn("at most", self.err("shell_exec", command="true", timeout=999999))
 
     def test_array_given_as_json_string(self):
-        r = self.err("docker_cli", args='["ps"]')  # docker is absent here, but the string became a list first
+        with mock.patch.object(proc, 'which', return_value=None):
+            r = self.err("docker_cli", args='["ps"]')  # independent of host Docker availability
         self.assertNotIn("must be an array", r)
 
 
@@ -101,8 +103,9 @@ class Policy(EngineCase):
         self.assertIn("read-only", self.err("service_manage", action="restart", unit="nginx"))
         self.assertIn("read-only", self.err("package_manage", action="install", packages=["x"]))
         self.assertIn("read-only", self.err("docker_cli", args=["rm", "web"]))
-        # a read-only docker command passes the policy (and then fails because docker is not installed here)
-        self.assertNotIn("read-only", self.err("docker_cli", args=["ps"]))
+        # A read-only command passes policy and reaches the missing-Docker error.
+        with mock.patch.object(proc, 'which', return_value=None):
+            self.assertNotIn("read-only", self.err("docker_cli", args=["ps"]))
 
     def test_disabled_tool_and_category(self):
         policy.save({"disabled_tools": ["fs_write"], "disabled_categories": ["docker"]})
@@ -277,3 +280,4 @@ class Large(EngineCase):
             except policy.Denied:
                 pass
         self.assertLess(time.time() - t0, 3.0)
+

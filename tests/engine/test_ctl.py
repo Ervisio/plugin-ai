@@ -20,6 +20,10 @@ class Admin(EngineCase):
 
     def setUp(self):
         super().setUp()
+        # Admin paths are redirected into this test's temporary directory.
+        privilege = mock.patch.object(ctl, '_need_root')
+        privilege.start()
+        self.addCleanup(privilege.stop)
         self.keep = (paths.INSTALL_DIR, paths.WRAPPER, paths.UNIT_PATH, ctl._has_systemd)
         paths.INSTALL_DIR = os.path.join(self.home, "usr-local-lib", "ervisio-ai")
         paths.WRAPPER = os.path.join(self.home, "usr-local-bin", "ervisio-ai")
@@ -201,7 +205,24 @@ class Admin(EngineCase):
         self.assertTrue(any(c["name"] == "transport security" and not c["ok"] for c in d["checks"]))
 
 
+class RootGate(unittest.TestCase):
+    def test_non_root_admin_calls_are_rejected(self):
+        with mock.patch.object(ctl.os, 'geteuid', return_value=1000):
+            with self.assertRaises(ctl.CtlError):
+                ctl._need_root()
+
+    def test_root_admin_calls_are_allowed(self):
+        with mock.patch.object(ctl.os, 'geteuid', return_value=0):
+            ctl._need_root()
+
+
 class CommandLine(EngineCase):
+    def setUp(self):
+        super().setUp()
+        privilege = mock.patch.object(ctl, '_need_root')
+        privilege.start()
+        self.addCleanup(privilege.stop)
+
     def run_cli(self, *argv):
         out = io.StringIO()
         with redirect_stdout(out):
@@ -352,3 +373,4 @@ class RunAsRoot(EngineCase):
 
 if __name__ == "__main__":
     unittest.main()
+
