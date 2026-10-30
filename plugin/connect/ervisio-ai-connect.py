@@ -26,7 +26,7 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 # The Ervisio page fills this in when you download the script from it, so that you only have to run it.
 PRESET = None  # __PRESET__

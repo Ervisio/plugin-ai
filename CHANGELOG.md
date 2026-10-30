@@ -2,6 +2,10 @@
 
 All notable changes to the Ervisio AI plugin will be documented in this file.
 
+## 0.1.1 - 2026-10-30
+
+Fix the provider network permissions for marketplace installation. Includes the AI chat, MCP server, server-management tools and automatic client connector.
+
 ## 0.1.0
 
 * First release.

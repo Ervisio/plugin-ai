@@ -75,6 +75,6 @@
   "id": "ai",
   "minCore": "0.5.0",
   "name": "AI",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "visibleTo": { "groups": ["sudo", "wheel", "admin"] }
 }
