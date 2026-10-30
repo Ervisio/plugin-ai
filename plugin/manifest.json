@@ -46,8 +46,7 @@
         { "admin": true, "create": true, "path": "/var/lib/ervisio-ai/spool" }
       ]
     },
-    "network": {
-      "hosts": [
+    "network": [
         "api.anthropic.com",
         "api.openai.com",
         "openrouter.ai",
@@ -56,9 +55,8 @@
         "api.deepseek.com",
         "api.mistral.ai",
         "api.x.ai"
-      ],
-      "userHosts": true
-    }
+    ],
+    "userHosts": true
   },
   "color": "ov",
   "contributes": {
