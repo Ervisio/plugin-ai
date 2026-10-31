@@ -150,6 +150,17 @@ test('auto mode never asks, and the mode is read every time', async () => {
   assert.equal(t.asked[0].id, 'b');
 });
 
+test('full access runs reads and changes as root without approval or classification', async () => {
+  const t = setup([call('read', 'fs_read'), call('write', 'fs_write'), call('shell', 'shell_exec'), say('done')], {
+    mode: () => 'auto', root: () => true,
+    classify: async () => { throw new Error('full access must not classify'); },
+    approve: async () => { throw new Error('full access must not ask'); },
+  });
+  await runTurn([user('perform the work')], t.deps);
+  assert.deepEqual(t.ran.map(({ call, root }) => [call.name, root]), [['fs_read', true], ['fs_write', true], ['shell_exec', true]]);
+  assert.equal(t.events.some((e) => e.type === 'tool-approval'), false);
+});
+
 test('root: the Root switch and sudo=true both run as root', async () => {
   let t = setup([call('a', 'fs_read', { path: '/x' }), say('ok')], { root: () => true });
   await runTurn([user('x')], t.deps);
@@ -160,6 +171,16 @@ test('root: the Root switch and sudo=true both run as root', async () => {
   t = setup([call('a', 'fs_read', { path: '/x' }), say('ok')]);
   await runTurn([user('x')], t.deps);
   assert.equal(t.ran[0].root, false);
+});
+
+test('enabling root while a tool awaits approval applies to that call', async () => {
+  let root = false;
+  const t = setup([call('write', 'fs_write'), say('done')], {
+    mode: () => 'ask', root: () => root,
+    approve: async () => { root = true; return 'allow'; },
+  });
+  await runTurn([user('write the file')], t.deps);
+  assert.equal(t.ran[0].root, true);
 });
 
 test('a tool that throws becomes an error result, not a crash', async () => {

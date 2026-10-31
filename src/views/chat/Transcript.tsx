@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { lazyMemo } from '../../ui/memo';
 import { Icon } from '../../kit';
 import { t } from '../../i18n';
-import { Markdown } from '../../chat/Markdown';
+import { Markdown } from '../../chat/MarkdownView';
 import { chat } from '../../chat/controller.ts';
 import type { Item } from '../../chat/items.ts';
 import { ToolCard } from './ToolCard';

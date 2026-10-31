@@ -151,6 +151,9 @@ export const STRINGS: Record<string, [string, string]> = {
   'cmd.tools': ['{n} tools: {list}', '{n} strumenti: {list}'],
 
   // approval modes
+  'chat.fullAccess': ['Full access', 'Full access'],
+  'chat.fullAccessHint': ['Enable all chat tools without approval, running as root. Ervisio administrator unlock and server policy still apply.', 'Attiva tutti gli strumenti della chat senza conferme, con esecuzione come root. Restano lo sblocco amministratore di Ervisio e le regole del server.'],
+  'chat.fullAccessOn': ['Full access enabled: no tool confirmations, running as root. Unlock administrator access in Ervisio when required. Click again to ask before changes.', 'Full access attivo: nessuna conferma per gli strumenti, esecuzione come root. Sblocca l’accesso amministratore in Ervisio quando richiesto. Clicca di nuovo per chiedere prima delle modifiche.'],
   'mode.auto-read': ['Read freely, ask to change', 'Leggi liberamente, chiedi per modificare'],
   'mode.ask': ['Ask for everything', 'Chiedi sempre'],
   'mode.auto': ['Never ask', 'Non chiedere mai'],

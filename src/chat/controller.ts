@@ -166,6 +166,7 @@ export class ChatController {
       const system = buildSystemPrompt({
         host: id?.hostname ?? 'this server', user: id?.user ?? 'the signed-in user', home: id?.home ?? '~',
         language: LANGUAGES[getSdk().lang().slice(0, 2)] ?? 'the language the person writes in', extra: cfg.extraPrompt, tools: st.tools,
+        fullAccess: cfg.approval === 'auto' && cfg.root,
       });
       const result = await runTurn(chat.messages, {
         provider: createProvider(provider), model, system, tools: st.tools, maxTokens: cfg.maxTokens, maxSteps: cfg.maxSteps, signal: this.abort.signal,
@@ -234,6 +235,15 @@ export class ChatController {
 
   setRoot(on: boolean): void {
     updateSettings({ root: on });
+  }
+
+  /** One explicit choice enables unattended tools with administrator execution. */
+  setFullAccess(on: boolean): void {
+    updateSettings({ approval: on ? 'auto' : 'auto-read', root: on });
+    if (on) {
+      this.pending?.('allow');
+      this.pending = undefined;
+    }
   }
 }
 

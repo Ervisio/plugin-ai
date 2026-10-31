@@ -147,7 +147,7 @@ export async function runTurn(history: Msg[], d: AgentDeps): Promise<TurnResult>
 }
 
 async function execute(call: ToolCall, d: AgentDeps): Promise<ToolOutcome> {
-  const root = isRootCall(call, d.root());
+  let root = isRootCall(call, d.root());
   const denied: ToolOutcome = { text: DENIED_TEXT, isError: true, denied: true };
   const mode = d.mode();
   let needsApproval = mode === 'ask';
@@ -169,6 +169,7 @@ async function execute(call: ToolCall, d: AgentDeps): Promise<ToolOutcome> {
       return denied;
     }
   }
+  root = isRootCall(call, d.root());
   d.emit({ type: 'tool-start', call, root });
   const started = Date.now();
   let outcome: ToolOutcome;

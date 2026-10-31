@@ -13,6 +13,8 @@ const history: string[] = [];
 
 /** The input line: Enter sends, Shift+Enter adds a line, `/` opens commands, `!` runs a shell command, Esc stops. */
 export function Composer({ busy, tokens }: { busy: boolean; tokens: string }) {
+  const cfg = settings.use();
+  const fullAccess = cfg.approval === 'auto' && cfg.root;
   const [text, setText] = useState('');
   const [sel, setSel] = useState(0);
   const [hist, setHist] = useState(-1);
@@ -131,6 +133,10 @@ export function Composer({ busy, tokens }: { busy: boolean; tokens: string }) {
           : <button type="button" className="ai-send" disabled={!text.trim()} onClick={submit} aria-label={t('chat.send')} title={t('chat.send')}><Icon name="ai-send" /></button>}
       </div>
       <div className="ai-composer-ft">
+        <button type="button" className={`ai-pill ai-access${fullAccess ? ' ai-pill--warn' : ''}`} aria-pressed={fullAccess}
+          onClick={() => chat.setFullAccess(!fullAccess)} title={t(fullAccess ? 'chat.fullAccessOn' : 'chat.fullAccessHint')}>
+          <Icon name={fullAccess ? 'unlock' : 'shield'} />{t('chat.fullAccess')}{fullAccess && <Icon name="check" />}
+        </button>
         <span><kbd>Enter</kbd> {t('chat.hint.send')}</span>
         <span><kbd>Shift</kbd>+<kbd>Enter</kbd> {t('chat.hint.line')}</span>
         <span><kbd>/</kbd> {t('chat.hint.commands')}</span>
@@ -139,6 +145,7 @@ export function Composer({ busy, tokens }: { busy: boolean; tokens: string }) {
         <span className="ai-grow" />
         <span>{tokens}</span>
       </div>
+      {fullAccess && <div className="ai-note ai-access-note">{t('chat.fullAccessOn')}</div>}
     </div>
   );
 }

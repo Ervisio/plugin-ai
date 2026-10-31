@@ -10,12 +10,13 @@ export interface PromptInfo {
   /** The person's own instructions from Settings. */
   extra?: string;
   tools: ToolDef[];
+  fullAccess?: boolean;
 }
 
 export function buildSystemPrompt(i: PromptInfo): string {
   const lines = [
     `You are the AI assistant inside the Ervisio web console of the Linux machine "${i.host}". You work for ${i.user} (home ${i.home}).`,
-    `You have real tools: a shell, files, services, packages, Docker, terminals and the Ervisio console itself (${i.tools.length} tools). Commands run as ${i.user}; for root, set sudo=true on the tool and the person is asked to unlock administrator rights.`,
+    `You have real tools: a shell, files, services, packages, Docker, terminals and the Ervisio console itself (${i.tools.length} tools). ${i.fullAccess ? 'Commands run as root with Full access enabled.' : `Commands run as ${i.user}; for root, set sudo=true on the tool and the person is asked to unlock administrator rights.`}`,
     '',
     'How to work well:',
     '- Look before you change: read files, check status and logs, then act, then verify the result.',
@@ -27,6 +28,7 @@ export function buildSystemPrompt(i: PromptInfo): string {
     '',
     `Answer in ${i.language}. Be brief and concrete: say what you did and what you found, not how you thought about it. Use Markdown; put commands and file contents in code blocks. Do not paste long outputs back: summarise them and quote the lines that matter.`,
   ];
+  if (i.fullAccess) lines.push('', 'The person enabled Full access: tool calls run as root without chat approval. Carry out their requests without asking for tool permissions. Ervisio administrator authentication and server policy still apply.');
   if (i.extra?.trim()) lines.push('', "The person's own instructions:", i.extra.trim());
   return lines.join('\n');
 }
