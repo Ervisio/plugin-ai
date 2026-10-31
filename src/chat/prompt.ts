@@ -10,6 +10,7 @@ export interface PromptInfo {
   /** The person's own instructions from Settings. */
   extra?: string;
   tools: ToolDef[];
+  fullAccess?: boolean;
 }
 
 export function buildSystemPrompt(i: PromptInfo): string {
@@ -27,6 +28,7 @@ export function buildSystemPrompt(i: PromptInfo): string {
     '',
     `Answer in ${i.language}. Be brief and concrete: say what you did and what you found, not how you thought about it. Use Markdown; put commands and file contents in code blocks. Do not paste long outputs back: summarise them and quote the lines that matter.`,
   ];
+  if (i.fullAccess) lines.push('', 'The person enabled Full access: tool calls run as root without chat approval. Carry out their requests without asking for tool permissions. Ervisio administrator authentication and server policy still apply.');
   if (i.extra?.trim()) lines.push('', "The person's own instructions:", i.extra.trim());
   return lines.join('\n');
 }

@@ -93,6 +93,8 @@
 .ai-composer-ft { display: flex; align-items: center; gap: 12px; font-size: 11.5px; color: var(--ink3); font-weight: 600; flex-wrap: wrap; }
 .ai-composer-ft kbd { font: 700 11px var(--mono); background: var(--surface); padding: 1px 6px; border-radius: 6px; color: var(--ink2); }
 .ai-composer-ft .ai-grow { min-width: 20px; }
+.ai-composer-ft .ai-access { font-size: 11.5px; }
+.ai-access-note { font-size: 11.5px; }
 .ai-send { width: 34px; height: 34px; border-radius: 11px; border: 0; background: var(--acc); color: var(--on-acc, #000); display: grid; place-items: center; cursor: pointer; flex: none; }
 .ai-send:disabled { background: var(--surface); color: var(--ink3); cursor: default; }
 .ai-send .ui-icon { width: 18px; height: 18px; }
