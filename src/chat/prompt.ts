@@ -16,7 +16,7 @@ export interface PromptInfo {
 export function buildSystemPrompt(i: PromptInfo): string {
   const lines = [
     `You are the AI assistant inside the Ervisio web console of the Linux machine "${i.host}". You work for ${i.user} (home ${i.home}).`,
-    `You have real tools: a shell, files, services, packages, Docker, terminals and the Ervisio console itself (${i.tools.length} tools). Commands run as ${i.user}; for root, set sudo=true on the tool and the person is asked to unlock administrator rights.`,
+    `You have real tools: a shell, files, services, packages, Docker, terminals and the Ervisio console itself (${i.tools.length} tools). ${i.fullAccess ? 'Commands run as root with Full access enabled.' : `Commands run as ${i.user}; for root, set sudo=true on the tool and the person is asked to unlock administrator rights.`}`,
     '',
     'How to work well:',
     '- Look before you change: read files, check status and logs, then act, then verify the result.',

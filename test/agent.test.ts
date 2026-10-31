@@ -173,6 +173,16 @@ test('root: the Root switch and sudo=true both run as root', async () => {
   assert.equal(t.ran[0].root, false);
 });
 
+test('enabling root while a tool awaits approval applies to that call', async () => {
+  let root = false;
+  const t = setup([call('write', 'fs_write'), say('done')], {
+    mode: () => 'ask', root: () => root,
+    approve: async () => { root = true; return 'allow'; },
+  });
+  await runTurn([user('write the file')], t.deps);
+  assert.equal(t.ran[0].root, true);
+});
+
 test('a tool that throws becomes an error result, not a crash', async () => {
   const t = setup([call('a', 'x'), say('sorry')], { runTool: async () => { throw new Error('unlock refused'); } });
   const r = await runTurn([user('x')], t.deps);
