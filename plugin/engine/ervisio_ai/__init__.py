@@ -7,5 +7,5 @@ Standard library only (Python 3.8+). It runs three ways:
 * ``ervisio-ai call``   one tool call for the plugin's built-in chat (started by Ervisio).
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 NAME = "ervisio-ai"

@@ -2,6 +2,10 @@
 
 All notable changes to the Ervisio AI plugin will be documented in this file.
 
+## 0.1.2 - 2026-10-31
+
+Add the Full access toggle below the chat input: run tools as root without chat confirmations, including calls already waiting for approval. Keep Ervisio administrator authentication and server policy. Credit Ervisio team and fix the Markdown filename collision on Windows.
+
 ## 0.1.1 - 2026-10-30
 
 Fix the provider network permissions for marketplace installation. Includes the AI chat, MCP server, server-management tools and automatic client connector.
