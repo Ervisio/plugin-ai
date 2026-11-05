@@ -17,6 +17,8 @@ machine has).
 In Ervisio, open **Plugins › Browse › AI › Install** (the marketplace package is signed by the Ervisio team). The dialog
 lists the permissions below; updates appear in **Plugins › Updates**.
 
+This version requires Ervisio **0.7.0 or newer** and supports both Classic and the native ErvisiOS assistant.
+
 Then open **AI** in the sidebar and choose:
 
 1. **Chat here with your API key.** Pick a provider, paste the key, press *Test the key*, choose a model. Your key is
