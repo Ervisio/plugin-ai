@@ -2,6 +2,14 @@
 
 All notable changes to the Ervisio AI plugin will be documented in this file.
 
+## 0.2.0 - 2026-11-05
+
+- Add the native ErvisiOS assistant while preserving the Classic page and existing provider support.
+- Save and restore conversations in each signed-in user's private server account, including complete replies and tool exchanges.
+- Run supported local app and appearance commands immediately through Ervisio's authenticated shell broker, without an API key.
+- Suspend background plugin polling and animations when the window is minimized.
+- Require Ervisio 0.7.0 or newer and build with plugin SDK 0.4.0.
+
 ## 0.1.2 - 2026-10-31
 
 Add the Full access toggle below the chat input: run tools as root without chat confirmations, including calls already waiting for approval. Keep Ervisio administrator authentication and server policy. Credit Ervisio team and fix the Markdown filename collision on Windows.
