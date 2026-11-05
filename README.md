@@ -93,6 +93,16 @@ All 42 tools: [docs/tools.md](docs/tools.md).
 
 ### The chat
 
+* **ErvisiOS assistant.** The AI app opts into a native ErvisiOS page while keeping its classic view. Opening apps,
+  changing the theme and showing the desktop use the authenticated host's local command broker immediately, without
+  a model or API key. Other requests use the same configured providers and server tools as the classic plugin.
+* **History per account.** Conversations live in the signed-in user's private home on the server. The latest chat is
+  restored after a reload. Prompts are saved before network requests, and complete replies and tool exchanges are
+  checkpointed while the agent works. History is recovered directly from transcript files, including older chats
+  missing from a stale index. Failed saves stay visible with a retry action; they are never reported as successful.
+  The current transcript stays open until an unsuccessful save is retried, so switching chats cannot discard it.
+  Complete exchanges are durable checkpoints; text still streaming when the browser closes can be interrupted.
+
 * Streaming replies with Markdown, live output of running commands, a card for every tool call.
 * **Approval modes**: *Read freely, ask to change* (default), *Ask for everything*, *Never ask*. "Always allow this
   tool" when you trust one.

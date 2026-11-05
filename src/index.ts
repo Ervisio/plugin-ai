@@ -22,4 +22,5 @@ export default function activate(sdk: PluginSDK): void {
   injectStyles();
   registerAiIcons();
   sdk.registerPage('ai', sdk.version >= 3 && sdk.files && sdk.network ? App : TooOld);
+  sdk.registerPage('ai-ervisios', sdk.version >= 3 && sdk.files && sdk.network ? () => createElement(App, { native: true }) : TooOld);
 }

@@ -60,7 +60,7 @@
   },
   "color": "ov",
   "contributes": {
-    "pages": [{ "icon": "zap", "id": "ai", "title": "AI" }],
+    "pages": [{ "icon": "zap", "id": "ai", "title": "AI", "ervisios": { "view": "ai-ervisios" } }],
     "snippets": [
       { "command": "ervisio-ai status", "name": "AI server status" },
       { "command": "ervisio-ai doctor", "name": "AI server checks" },

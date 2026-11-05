@@ -17,6 +17,7 @@ connect = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(connect)
 
 
+@unittest.skipUnless(os.name == "posix", "Connector integration fixtures require POSIX shell executables")
 class Sandbox(unittest.TestCase):
     """A fake home directory with some AI tools "installed", and fake `ssh` and `claude` commands on PATH."""
 
@@ -25,7 +26,10 @@ class Sandbox(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.home, ignore_errors=True)
         self.bin = os.path.join(self.home, "bin")
         os.makedirs(self.bin)
-        self.env = dict(os.environ, HOME=self.home, XDG_CONFIG_HOME=os.path.join(self.home, ".config"), PATH=self.bin + ":/usr/bin:/bin",  # no real claude, codex, npx... from the machine running the tests
+        self.env = dict(os.environ, HOME=self.home, USERPROFILE=self.home,
+                        APPDATA=os.path.join(self.home, "AppData", "Roaming"),
+                        LOCALAPPDATA=os.path.join(self.home, "AppData", "Local"),
+                        XDG_CONFIG_HOME=os.path.join(self.home, ".config"), PATH=self.bin + ":/usr/bin:/bin",  # no real claude, codex, npx... from the machine running the tests
                         
                         ERVISIO_AI_HOME=os.path.join(self.home, "eai"), CODEX_HOME="")
         self.env.pop("CODEX_HOME")

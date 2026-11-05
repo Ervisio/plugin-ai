@@ -49,6 +49,8 @@ export interface AgentDeps {
   /** The person said "always allow" for this tool: it runs without asking in any mode. */
   preApproved?(call: ToolCall): boolean;
   emit(e: AgentEvent): void;
+  /** Persist complete provider turns/tool exchanges before another step runs. */
+  checkpoint?(messages: Msg[], usage: Usage): Promise<void>;
   /** Characters of conversation to send before old tool output is shortened. */
   contextBudget?: number;
   sleep?(ms: number, signal: AbortSignal): Promise<void>;
@@ -124,6 +126,7 @@ export async function runTurn(history: Msg[], d: AgentDeps): Promise<TurnResult>
       d.emit({ type: 'assistant-end', blocks: result.blocks });
     }
     if (!calls.length) {
+      await d.checkpoint?.(messages, total);
       if (result.stop === 'max_tokens') {
         d.emit({ type: 'notice', tone: 'warn', text: 'The reply was cut at the token limit. Say "continue", or raise the limit in Settings.' });
         return { messages, end: 'max_tokens', usage: total };
@@ -142,6 +145,7 @@ export async function runTurn(history: Msg[], d: AgentDeps): Promise<TurnResult>
       results.push({ type: 'tool_result', tool_use_id: call.id, content: outcome.text, ...(outcome.isError ? { is_error: true } : {}) });
     }
     messages.push({ role: 'user', content: results });
+    await d.checkpoint?.(messages, total);
     if (d.signal.aborted) return { messages, end: 'aborted', usage: total };
   }
 }

@@ -7,12 +7,13 @@ import { getSdk } from '../sdk';
 import { callTool, classify, listTools, whoami, type Identity } from '../engine.ts';
 import { activeProvider, settings, updateSettings } from '../state/settings.ts';
 import { createStore } from '../state/store.ts';
-import { deleteChat, listChats, loadChat, newChat, saveChat, type Chat, type ChatMeta } from '../state/chats.ts';
+import { chatWarnings, deleteChat, listChats, loadChat, newChat, saveChat, type Chat, type ChatMeta } from '../state/chats.ts';
 import { runTurn, type AgentEvent, type ToolCall } from './agent.ts';
 import { itemId, itemsFromMessages, reduceItems, type Item } from './items.ts';
 import { buildSystemPrompt } from './prompt.ts';
 import { createProvider, PRESETS } from './providers.ts';
 import type { Msg, ProviderConfig, ToolDef, Usage } from './types.ts';
+import { localCommand } from './local.ts';
 
 export interface ChatState {
   chat: Chat;
@@ -24,6 +25,8 @@ export interface ChatState {
   identity?: Identity;
   /** The engine could not be reached: why. */
   engineError?: string;
+  storageError?: string;
+  historyError?: string;
   list: ChatMeta[];
 }
 
@@ -60,6 +63,7 @@ export class ChatController {
   private allowed = new Set<string>();
   private queue: AgentEvent[] = [];
   private raf = 0;
+  private restored = false;
 
   private patch(p: Partial<ChatState>): void {
     this.state.set((s) => ({ ...s, ...p }));
@@ -73,31 +77,58 @@ export class ChatController {
     } catch (e) {
       this.patch({ engineError: (e as Error).message });
     }
-    this.patch({ list: await listChats() });
+    await this.refreshList();
+    if (!this.restored) {
+      this.restored = true;
+      const current = this.state.get();
+      if (!current.busy && !current.chat.messages.length && current.list[0]) await this.open(current.list[0].id);
+    }
   }
 
   async refreshList(): Promise<void> {
-    this.patch({ list: await listChats() });
+    try {
+      const list = await listChats();
+      const warnings = chatWarnings();
+      this.patch({ list, historyError: warnings.length ? warnings.join('\n') : undefined });
+    }
+    catch (e) { this.patch({ historyError: (e as Error).message }); }
+  }
+
+  private async persist(chat: Chat): Promise<void> {
+    try { await saveChat(chat); this.patch({ storageError: undefined }); }
+    catch (e) { this.patch({ storageError: (e as Error).message }); throw e; }
+  }
+
+  async retrySave(): Promise<void> {
+    try { await this.persist(this.state.get().chat); await this.refreshList(); }
+    catch { /* the persistent error banner retains the retry action */ }
   }
 
   startNew(): void {
-    if (this.state.get().busy) return;
+    if (this.state.get().busy || this.state.get().storageError) return;
+    this.restored = true;
     const s = settings.get();
     const p = activeProvider(s);
     this.patch({ chat: newChat(p?.id ?? '', p ? s.models[p.id] ?? '' : ''), items: [], planning: '' });
   }
 
   async open(id: string): Promise<void> {
-    if (this.state.get().busy) return;
-    const c = await loadChat(id);
-    if (!c) return;
-    this.patch({ chat: c, items: itemsFromMessages(c.messages), planning: '' });
+    if (this.state.get().busy || this.state.get().storageError) return;
+    this.restored = true;
+    try {
+      const c = await loadChat(id);
+      if (!c) return;
+      this.patch({ chat: c, items: itemsFromMessages(c.messages), planning: '' });
+    } catch (e) { this.patch({ historyError: (e as Error).message }); }
   }
 
   async remove(id: string): Promise<void> {
-    await deleteChat(id);
-    if (this.state.get().chat.id === id) this.startNew();
-    await this.refreshList();
+    if (this.state.get().busy || this.state.get().storageError) return;
+    try {
+      await deleteChat(id);
+      if (this.state.get().chat.id === id) this.startNew();
+      await this.refreshList();
+    } catch (e) { this.patch({ historyError: (e as Error).message }); }
   }
 
   // -- events ------------------------------------------------------------------------------------------------
@@ -151,15 +182,46 @@ export class ChatController {
   async send(text: string): Promise<void> {
     const s0 = this.state.get();
     if (s0.busy || !text.trim()) return;
+    const msg: Msg = { role: 'user', content: [{ type: 'text', text }] };
+    const prompt: Chat = { ...s0.chat, messages: [...s0.chat.messages, msg] };
+    this.patch({ chat: prompt, items: [...s0.items, { kind: 'user', id: itemId(), text }], busy: true, planning: '' });
+    try {
+      // A local "close window" or shell switch can unload this frame immediately.
+      await this.persist(prompt);
+      const local = await localCommand(text);
+      if (local.handled) {
+        const messages: Msg[] = [...prompt.messages,
+          { role: 'assistant', content: [{ type: 'text', text: local.message || 'Done.' }] }];
+        const done = { ...prompt, messages };
+        this.patch({ chat: done, items: itemsFromMessages(messages) });
+        await this.persist(done);
+        await this.refreshList();
+        this.patch({ busy: false });
+        return;
+      }
+    } catch (e) {
+      this.addItem({ kind: 'notice', id: itemId(), tone: 'err', text: (e as Error).message });
+      this.patch({ busy: false });
+      return;
+    }
     const cfg = settings.get();
     const provider = activeProvider(cfg);
-    if (!provider) return;
+    const blocked = this.blocker();
+    if (!provider || blocked) {
+      const text = blocked === 'engine' ? this.state.get().engineError! : getSdk().lang().startsWith('it')
+        ? 'Per questa richiesta configura un provider e un modello in Impostazioni. I comandi dell’interfaccia funzionano senza API key.'
+        : 'Configure a provider and model in Settings for this request. Interface commands work without an API key.';
+      this.addItem({ kind: 'notice', id: itemId(), tone: 'info', text });
+      this.patch({ busy: false });
+      return;
+    }
     const model = cfg.models[provider.id];
-    const msg: Msg = { role: 'user', content: [{ type: 'text', text }] };
-    const chat: Chat = { ...s0.chat, provider: provider.id, model, messages: [...s0.chat.messages, msg] };
+    const chat: Chat = { ...prompt, provider: provider.id, model };
     this.patch({ chat, items: [...s0.items, { kind: 'user', id: itemId(), text }], busy: true, planning: '' });
     this.abort = new AbortController();
     try {
+      // Save the prompt before any network request or page reload can interrupt the turn.
+      await this.persist(chat);
       await ensureHostAllowed(provider);
       const st = this.state.get();
       const id = st.identity;
@@ -177,17 +239,22 @@ export class ChatController {
         approve: (c) => new Promise((resolve) => { this.pending = resolve; void c; }),
         preApproved: (c) => this.allowed.has(c.name),
         emit: this.emit,
+        checkpoint: async (messages, usage) => {
+          const snapshot: Chat = { ...chat, messages: [...messages], usage: { input: chat.usage.input + usage.input, output: chat.usage.output + usage.output } };
+          this.patch({ chat: snapshot });
+          await this.persist(snapshot);
+        },
       });
       this.flushNow();
       const usage: Usage = { input: chat.usage.input + result.usage.input, output: chat.usage.output + result.usage.output };
       const done: Chat = { ...chat, messages: result.messages, usage };
       this.patch({ chat: done });
-      await saveChat(done);
+      await this.persist(done);
     } catch (e) {
       this.flushNow();
       this.addItem({ kind: 'notice', id: itemId(), tone: 'err', text: (e as Error).message });
       const failed = { ...this.state.get().chat };
-      void saveChat(failed);
+      try { await this.persist(failed); } catch { /* the banner exposes the failure */ }
     } finally {
       this.pending = undefined;
       this.abort = undefined;
@@ -225,7 +292,8 @@ export class ChatController {
     const chat = { ...this.state.get().chat, messages: [...this.state.get().chat.messages, note] };
     this.patch({ chat, busy: false });
     this.abort = undefined;
-    void saveChat(chat).then(() => this.refreshList());
+    try { await this.persist(chat); await this.refreshList(); }
+    catch { /* the banner exposes the failure */ }
   }
 
   clear(): void {

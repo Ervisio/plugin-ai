@@ -90,6 +90,11 @@ export const STRINGS: Record<string, [string, string]> = {
   'provider.saved': ['{name} is ready', '{name} è pronto'],
 
   // chat
+  'chat.local': ['Ervisio assistant', 'Assistente Ervisio'],
+  'chat.localHint': ['Open apps, change the theme or show the desktop instantly. Connect a model for everything else.', 'Apri app, cambia tema o mostra il desktop subito. Collega un modello per tutte le altre richieste.'],
+  'chat.configure': ['Connect AI', 'Collega AI'],
+  'chat.saveFailed': ['Conversation not saved.', 'Conversazione non salvata.'],
+  'chat.historyFailed': ['Some conversation history could not be read.', 'Impossibile leggere parte della cronologia.'],
   'chat.setup.title': ['Connect a model to start', 'Collega un modello per iniziare'],
   'chat.setup.text': ['Choose a provider and paste your API key. Nothing is sent anywhere except to that provider.', 'Scegli un provider e incolla la tua API key. Non viene inviato nulla se non a quel provider.'],
   'chat.addProvider': ['Add a provider', 'Aggiungi un provider'],

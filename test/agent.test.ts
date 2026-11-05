@@ -62,6 +62,27 @@ test('a plain answer ends the turn', async () => {
   assert.equal(sent[0].system, 'S');
 });
 
+test('complete tool exchanges and final replies are checkpointed before proceeding', async () => {
+  const saved: { messages: Msg[]; input: number }[] = [];
+  const { deps, sent } = setup([call('persist-1', 'fs_read'), say('Saved answer')], {
+    checkpoint: async (messages, usage) => { saved.push({ messages: structuredClone(messages), input: usage.input }); },
+  });
+  await runTurn([user('persist this')], deps);
+  assert.equal(saved.length, 2);
+  assert.equal(saved[0].messages[2].content[0].type, 'tool_result');
+  assert.equal(saved[1].messages[3].content[0].type, 'text');
+  assert.deepEqual(saved.map((item) => item.input), [10, 20]);
+  assert.equal(sent.length, 2);
+});
+
+test('checkpoint failure stops additional provider steps rather than losing tool history', async () => {
+  const { deps, sent } = setup([call('persist-1', 'fs_read'), say('never sent')], {
+    checkpoint: async () => { throw new Error('disk full'); },
+  });
+  await assert.rejects(runTurn([user('persist this')], deps), /disk full/);
+  assert.equal(sent.length, 1);
+});
+
 test('a tool call is run and its result goes back to the model, which then answers', async () => {
   const { deps, events, ran, sent } = setup([call('t1', 'shell_exec', { command: 'id' }, 'Checking.'), say('You are root.')]);
   const r = await runTurn([user('who am i')], deps);

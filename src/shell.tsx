@@ -19,7 +19,7 @@ const GROUPS: { label: string; items: Exclude<View, 'welcome'>[] }[] = [
 ];
 
 /** The page: inner sidebar and the current view. */
-export function App() {
+export function App({ native = false }: { native?: boolean }) {
   const ready = loaded.use();
   const s = settings.use();
   const view = route.use();
@@ -29,17 +29,17 @@ export function App() {
     void (async () => {
       await loadSettings();
       const cfg = settings.get();
-      go(cfg.welcomed ? cfg.landing : 'welcome');
+      go(native ? 'chat' : cfg.welcomed ? cfg.landing : 'welcome');
       void chat.init();
     })();
-  }, []);
+  }, [native]);
 
   if (!ready) return <div className="ai-root hue-ov"><Skeleton height={300} style={{ borderRadius: 18 }} /></div>;
-  const shown: View = !s.welcomed ? 'welcome' : view === 'welcome' ? 'chat' : view;
+  const shown: View = !s.welcomed && !native ? 'welcome' : view === 'welcome' ? 'chat' : view;
   if (shown === 'welcome') return <div className="ai-root hue-ov"><Welcome /></div>;
 
   return (
-    <div className={`ai-root hue-ov${shown === 'chat' ? ' ai-root--fill' : ''}`}>
+    <div className={`ai-root hue-ov${native ? ' ai-root--ervisios' : ''}${shown === 'chat' ? ' ai-root--fill' : ''}`}>
       <div className="ai-shell">
         <nav className="ai-nav" aria-label={t('nav.aria')}>
           {GROUPS.map((g) => (

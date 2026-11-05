@@ -9,6 +9,7 @@ import { ProviderForm } from '../ProviderForm';
 import { Composer } from './Composer';
 import { Transcript } from './Transcript';
 import type { ApprovalMode } from '../../chat/agent.ts';
+import { hasLocalCommands } from '../../chat/local.ts';
 
 const MODES: ApprovalMode[] = ['auto-read', 'ask', 'auto'];
 
@@ -20,14 +21,14 @@ function Sidebar() {
   const st = chat.state.use();
   return (
     <aside className="ai-chat-side" aria-label={t('chat.history')}>
-      <Button variant="secondary" icon="plus" block disabled={st.busy} onClick={() => chat.startNew()}>{t('chat.new')}</Button>
+      <Button variant="secondary" icon="plus" block disabled={st.busy || !!st.storageError} onClick={() => chat.startNew()}>{t('chat.new')}</Button>
       <div className="ai-chat-side-list">
         {st.list.length === 0 && <div className="ai-muted" style={{ padding: 10 }}>{t('chat.noHistory')}</div>}
         {st.list.map((c) => (
-          <button key={c.id} type="button" className="ai-chat-it" aria-current={c.id === st.chat.id} onClick={() => void chat.open(c.id)} title={c.title}>
-            <span>{c.title || t('chat.untitled')}</span>
-            <IconButton icon="trash" size="sm" label={t('common.delete')} className="ai-chat-del" onClick={(e) => { e.stopPropagation(); void chat.remove(c.id); }} />
-          </button>
+          <div key={c.id} className="ai-chat-it" aria-current={c.id === st.chat.id}>
+            <button type="button" className="ai-chat-open" disabled={st.busy || !!st.storageError} onClick={() => void chat.open(c.id)} title={c.title}>{c.title || t('chat.untitled')}</button>
+            <IconButton icon="trash" size="sm" label={t('common.delete')} disabled={st.busy || !!st.storageError} className="ai-chat-del" onClick={() => void chat.remove(c.id)} />
+          </div>
         ))}
       </div>
     </aside>
@@ -79,26 +80,35 @@ export function ChatView() {
   const cfg = settings.use();
   const provider = activeProvider(cfg);
   const [adding, setAdding] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   useEffect(() => { void chat.refreshList(); }, []);
 
-  if (st.engineError) return <div className="ai-view" style={{ justifyContent: 'center', flex: 1 }}><EngineProblem message={st.engineError} /></div>;
-  if (!provider || !cfg.models[provider.id] || adding) {
+  const configured = !!provider && !!cfg.models[provider.id];
+  if ((!configured && !hasLocalCommands()) || adding) {
     return (
       <div className="ai-view" style={{ flex: 1, overflowY: 'auto' }}>
         <div className="ai-setup">
           <h2>{provider ? t('chat.addProvider') : t('chat.setup.title')}</h2>
           <p className="ai-note">{t('chat.setup.text')}</p>
           <ProviderForm onDone={() => setAdding(false)} />
+          {adding && <Button variant="ghost" onClick={() => setAdding(false)}>{t('common.cancel')}</Button>}
         </div>
       </div>
     );
   }
-  const tokens = st.chat.usage.input + st.chat.usage.output > 0 ? t('chat.tokens', { input: fmtK(st.chat.usage.input), output: fmtK(st.chat.usage.output) }) : presetOf(provider)?.name ?? provider.name;
+  const tokens = st.chat.usage.input + st.chat.usage.output > 0 ? t('chat.tokens', { input: fmtK(st.chat.usage.input), output: fmtK(st.chat.usage.output) }) : provider ? presetOf(provider)?.name ?? provider.name : t('chat.local');
   return (
-    <div className="ai-chat">
+    <div className={`ai-chat${historyOpen ? ' ai-chat--history' : ''}`}>
       <Sidebar />
       <div className="ai-chat-main">
-        <Bar />
+        <div className="ai-chat-mobile-actions">
+          <Button variant="ghost" icon="menu" onClick={() => setHistoryOpen(!historyOpen)} aria-expanded={historyOpen}>{t('chat.history')}</Button>
+          <Button variant="ghost" icon="plus" disabled={st.busy || !!st.storageError} onClick={() => chat.startNew()}>{t('chat.new')}</Button>
+        </div>
+        {configured ? <Bar /> : <div className="ai-local-setup"><div><b>{t('chat.local')}</b><p>{t('chat.localHint')}</p></div><Button variant="secondary" icon="cog" onClick={() => setAdding(true)}>{t('chat.configure')}</Button></div>}
+        {st.engineError && <details className="ai-engine-inline"><summary>{t('chat.engine.title')}</summary><EngineProblem message={st.engineError} /></details>}
+        {st.storageError && <div className="ai-storage-error" role="alert"><span><b>{t('chat.saveFailed')}</b> {st.storageError}</span><Button variant="ghost" onClick={() => void chat.retrySave()}>{t('common.retry')}</Button></div>}
+        {st.historyError && <div className="ai-storage-error" role="alert"><span><b>{t('chat.historyFailed')}</b> {st.historyError}</span><Button variant="ghost" onClick={() => void chat.refreshList()}>{t('common.retry')}</Button></div>}
         <Transcript items={st.items} busy={st.busy} planning={st.planning} />
         <Composer busy={st.busy} tokens={tokens} />
       </div>

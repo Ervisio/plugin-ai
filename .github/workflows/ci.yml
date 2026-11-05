@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ERVISIO_REF: v0.6.2
+  ERVISIO_REF: feat/ervisios
 
 jobs:
   build:
