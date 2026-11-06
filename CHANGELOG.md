@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.0] - 2026-11-06
+
+- Persist conversations and settings per account with conflict detection; add the compact global assistant surface and the shared safety-folder chooser.
+
+
 All notable changes to the Ervisio AI plugin will be documented in this file.
 
 ## 0.3.0 - 2026-11-06

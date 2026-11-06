@@ -1,3 +1,4 @@
+import { getSdk } from '../sdk';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Badge, Button, Checkbox, ConfirmDialog, EmptyState, Icon, Input, Segmented, Select, Skeleton, Switch, Tabs, Textarea, toast } from '../kit';
 import { t } from '../i18n';
@@ -206,6 +207,7 @@ function Safety({ s }: { s: ServerStatus }) {
         <div className="ai-cats">{CATEGORIES.map((c) => <Checkbox key={c} checked={!p.disabled_categories.includes(c)} onChange={() => toggleCat(c)} label={t(`cat.${c}`)} />)}</div>
       </div>
       <Textarea label={t('safety.paths')} hint={t('safety.pathsHint')} rows={3} mono value={paths} onChange={(e) => setPaths(e.target.value)} placeholder={'/etc/ssh\n/root/.gnupg'} />
+      <Button icon="files" onClick={async()=>{try{const selected=await getSdk().files.pick?.({mode:'folder',title:t('safety.paths')});if(selected){if(selected.path.startsWith('remote:'))throw new Error('Choose a folder on this server.');setPaths(current=>[...new Set([...lines(current),selected.path])].join('\n'));}}catch(error){toast.err(t('safety.paths'),error instanceof Error?error.message:String(error));}}}>{getSdk().lang().startsWith('it')?'Aggiungi cartella…':'Add folder…'}</Button>
       <Textarea label={t('safety.methods')} hint={t('safety.methodsHint')} rows={2} mono value={methods} onChange={(e) => setMethods(e.target.value)} placeholder="^users\.\n^config\.set" />
       <div className="ai-row">
         <Button variant="primary" icon="check" loading={busy === 'policy'} onClick={() => act('policy', () => ctl('policy_set', { ...p, deny_paths: lines(paths), ervisio_deny_methods: lines(methods) }, { root: true }), t('safety.saved'))}>{t('safety.save')}</Button>
