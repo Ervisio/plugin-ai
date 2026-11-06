@@ -2,6 +2,7 @@
 import { getSdk } from '../sdk';
 import { writeEnsured } from './files';
 import { createStore } from './store.ts';
+import { missing } from './chatRepository.ts';
 import { PRESETS } from '../chat/providers.ts';
 import type { ProviderConfig } from '../chat/types.ts';
 import type { ApprovalMode } from '../chat/agent.ts';
@@ -51,15 +52,46 @@ export const DEFAULTS: Settings = {
 
 export const settings = createStore<Settings>(DEFAULTS);
 export const loaded = createStore<boolean>(false);
+export const settingsError = createStore<string>('');
+let revision = '';
+let writable = false;
+let loading: Promise<void> | undefined;
+let saving: Promise<void> = Promise.resolve();
+
+function decodeSettings(text: string): Settings {
+  const raw = JSON.parse(text) as Partial<Settings>;
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.providers)) throw new Error('The saved AI settings need repair. The original data has been preserved.');
+  return { ...DEFAULTS, ...raw, connect: { ...DEFAULTS.connect, ...(raw.connect ?? {}) }, version: 1 };
+}
 
 export async function loadSettings(): Promise<void> {
-  try {
-    const raw = JSON.parse(await getSdk().files.read(FILE)) as Partial<Settings>;
-    settings.set({ ...DEFAULTS, ...raw, connect: { ...DEFAULTS.connect, ...(raw.connect ?? {}) }, version: 1 });
-  } catch {
-    // no file yet: the defaults stand
-  }
-  loaded.set(true);
+  if (!loading) loading = (async () => {
+    try {
+      const data = getSdk().data;
+      let text: string | undefined;
+      if (data) {
+        try { const file = await data.read('settings.json'); text = file.text; revision = file.revision; }
+        catch (e) { if (!missing(e)) throw e; }
+      }
+      if (text === undefined) {
+        try { text = await getSdk().files.read(FILE); }
+        catch (e) { if (!missing(e)) throw e; }
+        const imported = text === undefined ? structuredClone(DEFAULTS) : decodeSettings(text);
+        if (data) {
+          try { revision = (await data.write('settings.json', JSON.stringify(imported), '')).revision; }
+          catch (e) {
+            if ((e as { code?: string }).code !== 'conflict') throw e;
+            const winner = await data.read('settings.json'); text = winner.text; revision = winner.revision;
+          }
+        }
+      }
+      settings.set(text === undefined ? structuredClone(DEFAULTS) : decodeSettings(text));
+      writable = true;
+      settingsError.set('');
+    } catch (e) { writable = false; settingsError.set((e as Error).message); }
+    loaded.set(true);
+  })();
+  await loading;
 }
 
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -76,12 +108,32 @@ export function updateSettings(patch: Partial<Settings> | ((s: Settings) => Part
 export async function flushSettings(): Promise<void> {
   clearTimeout(timer);
   if (!pending) return;
+  const snapshot = JSON.stringify(settings.get(), null, 2);
   pending = false;
+  const work = saving.then(async () => {
+    if (!writable) throw new Error('The original settings could not be loaded. Retry loading them before saving.');
+    const data = getSdk().data;
+    if (data) revision = (await data.write('settings.json', snapshot, revision)).revision;
+    else await writeEnsured(FILE, snapshot);
+    settingsError.set('');
+  });
+  saving = work.catch(() => {});
   try {
-    await writeEnsured(FILE, JSON.stringify(settings.get(), null, 2));
+    await work;
   } catch (e) {
+    pending = true;
+    settingsError.set((e as Error).message);
     getSdk().ui.toast.err('Could not save the settings', (e as Error).message);
   }
+}
+
+export async function retrySettings(): Promise<void> {
+  if (writable) { await flushSettings(); return; }
+  loading = undefined;
+  await loadSettings();
+  // On an initial read failure no on-disk state was replaced. Keep that state
+  // authoritative when retrying rather than silently saving temporary defaults.
+  if (writable) pending = false;
 }
 
 export function activeProvider(s: Settings): ProviderConfig | undefined {

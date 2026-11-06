@@ -1,6 +1,20 @@
 # Changelog
 
+## [0.3.0] - 2026-11-06
+
+- Persist conversations and settings per account with conflict detection; add the compact global assistant surface and the shared safety-folder chooser.
+
+
 All notable changes to the Ervisio AI plugin will be documented in this file.
+
+## 0.3.0 - 2026-11-06
+
+- Add the compact assistant surface used by the global chat in Classic and ErvisiOS.
+- Move conversations and provider settings to private account-managed storage, with a one-time copy of readable legacy files and no changes to the originals.
+- Prevent full-page and compact chat turns from overwriting each other using revision checks and renewable editing leases. Keep a rejected prompt in the composer.
+- Preserve complete transcript checkpoints and expose persistence or migration errors instead of silently loading empty settings.
+- Refresh idle conversation snapshots when a minimized panel becomes visible.
+- Build against SDK 0.5.0 and require Ervisio 7.0.4 for managed state.
 
 ## 0.2.0 - 2026-11-05
 

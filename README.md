@@ -235,3 +235,9 @@ no new permissions is in the marketplace a few minutes later. The steps live in
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+### Private conversations and compact chat (0.3)
+
+Ervisio 7.0.4 stores AI conversations and settings in the signed-in account’s managed plugin data. Readable legacy chat/settings files are copied once, without deleting or rewriting the originals. Conversation revisions and short renewable turn leases prevent simultaneous full-page and floating panels from overwriting each other. A minimized panel keeps its current conversation and unsent draft; returning to an idle panel refreshes its saved history.
+
+The global chat is enabled by default in Classic when the AI plugin is installed and available to the account. Enable it in ErvisiOS under Settings → Appearance → Visible apps → Floating AI chat. The full AI application remains available. Interface commands run locally through the host; all other requests retain the existing provider configuration and permission checks.

@@ -76,14 +76,14 @@ export function Composer({ busy, tokens }: { busy: boolean; tokens: string }) {
     const p = parseInput(text);
     if (p.kind === 'empty') return;
     if (busy) return;
-    history.unshift(text);
-    setHist(-1);
-    setText('');
+    const submitted = text;
+    const accepted = () => { history.unshift(submitted); setHist(-1); setText(current => current === submitted ? '' : current); };
     if (p.kind === 'slash') {
+      accepted();
       if (!p.known) say(t('cmd.unknown', { name: p.name }), 'warn');
       else void runSlash(p.name, p.args);
-    } else if (p.kind === 'shell') void chat.shell(p.command);
-    else void chat.send(p.text);
+    } else if (p.kind === 'shell') void chat.shell(p.command, accepted);
+    else void chat.send(p.text, accepted);
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {

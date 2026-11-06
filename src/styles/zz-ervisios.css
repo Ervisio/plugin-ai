@@ -1,4 +1,16 @@
 /* Native ErvisiOS surface: the host supplies colors, typography and the window frame. */
+.ai-root--compact { padding: 0; height: 100dvh; min-height: 0; display: flex; flex-direction: column; }
+.ai-root--compact .ai-shell { min-height: 0; flex: 1; }
+.ai-root--compact .ai-nav { display: none; }
+.ai-root--compact .ai-main { padding: 8px; min-width: 0; min-height: 0; }
+.ai-root--compact .ai-chat { gap: 8px; }
+.ai-root--compact .ai-chat-bar { flex-wrap: wrap; gap: 6px; }
+.ai-root--compact .ai-chat-bar h2 { width: 100%; font-size: 14px; }
+.ai-root--compact .ai-transcript { padding: 8px; }
+.ai-root--compact .ai-empty h2 { font-size: 20px; }
+.ai-root--compact .ai-empty { padding: 16px 8px; }
+.ai-root--compact .ai-local-setup { padding: 8px; }
+.ai-root--compact .ai-storage-error { flex-wrap: wrap; }
 .ai-root--ervisios { padding: 0; min-height: 100%; }
 .ai-root--ervisios.ai-root--fill { height: 100dvh; padding-bottom: 0; }
 .ai-root--ervisios .ai-shell { flex-direction: column; gap: 0; }
