@@ -15,8 +15,20 @@ export interface ChatMeta {
 }
 
 export interface Chat extends ChatMeta {
+  /** Host metadata, excluded from the serialized transcript. */
+  storageRevision?: string;
+  leaseOwner?: string;
   messages: Msg[];
   usage: Usage;
+}
+
+export interface ChatDocuments {
+  read(key: string): Promise<{ text: string; revision: string }>;
+  write(key: string, text: string, revision?: string, owner?: string): Promise<{ revision: string }>;
+  list(): Promise<{ path: string; type: string; size: number }[]>;
+  remove(key: string, revision: string): Promise<void>;
+  claim(key: string, owner: string): Promise<{ expires: number }>;
+  release(key: string, owner: string): Promise<void>;
 }
 
 export interface ChatFiles {
@@ -51,6 +63,8 @@ export function titleOf(messages: Msg[]): string {
 /** Bound the encoded bytes without mutating the live transcript or dropping user text. */
 export function fit(chat: Chat): string {
   const copy: Chat = { ...chat, messages: chat.messages.map((m) => ({ ...m, content: [...m.content] })) };
+  delete copy.storageRevision;
+  delete copy.leaseOwner;
   let json = JSON.stringify(copy);
   for (const message of copy.messages) {
     if (new TextEncoder().encode(json).length <= MAX_BYTES) break;
@@ -82,11 +96,59 @@ function metaOf(chat: Chat): ChatMeta {
 export class ChatRepository {
   private writes: Promise<unknown> = Promise.resolve();
   private readonly files: ChatFiles;
+  private readonly documents?: () => ChatDocuments | undefined;
+  private migration?: Promise<void>;
+  private migrationWarnings: string[] = [];
   readonly warnings: string[] = [];
-  constructor(files: ChatFiles) { this.files = files; }
+  constructor(files: ChatFiles, documents?: () => ChatDocuments | undefined) { this.files = files; this.documents = documents; }
+
+  private key(id: string): string { pathOf(id); return `chats/${id}.json`; }
+
+  private async ready(): Promise<void> {
+    const data = this.documents?.();
+    if (!data) return;
+    if (!this.migration) this.migration = this.migrate(data).catch(e => { this.migration = undefined; throw e; });
+    await this.migration;
+  }
+
+  /** Copy once, leave original files untouched and never replace managed data. */
+  private async migrate(data: ChatDocuments): Promise<void> {
+    const marker = 'migration/chats-v1.json';
+    try {
+      const saved = JSON.parse((await data.read(marker)).text) as { warnings?: string[] };
+      this.migrationWarnings = saved.warnings || [];
+      return;
+    } catch (e) { if (!missing(e)) throw e; }
+    let entries: { name: string; type: string }[];
+    try { entries = await this.files.list(CHAT_DIR); }
+    catch (e) { if (!missing(e)) throw e; entries = []; }
+    const warnings: string[] = [];
+    for (const entry of entries) {
+      const id = entry.name.replace(/\.json$/, '');
+      if (entry.type !== 'file' || !entry.name.endsWith('.json') || id === 'index' || !ID.test(id)) continue;
+      try { await data.read(this.key(id)); continue; } catch (e) { if (!missing(e)) throw e; }
+      let chat: Chat;
+      const original = await this.files.read(pathOf(id));
+      try { chat = parseChat(original, id); }
+      catch { warnings.push(`${id}: The original chat file needs repair; it has been preserved in the legacy folder.`); continue; }
+      try { await data.write(this.key(id), fit(chat), ''); }
+      catch (e) { if ((e as { code?: string }).code !== 'conflict') throw e; }
+    }
+    try { await data.write(marker, JSON.stringify({ warnings }), ''); }
+    catch (e) { if ((e as { code?: string }).code !== 'conflict') throw e; }
+    this.migrationWarnings = warnings;
+  }
 
   private async read(id: string): Promise<Chat | undefined> {
-    try { return parseChat(await this.files.read(pathOf(id)), id); }
+    try {
+      const data = this.documents?.();
+      if (data) {
+        await this.ready();
+        const file = await data.read(this.key(id));
+        return { ...parseChat(file.text, id), storageRevision: file.revision };
+      }
+      return parseChat(await this.files.read(pathOf(id)), id);
+    }
     catch (e) { if (missing(e)) return undefined; throw e; }
   }
 
@@ -99,7 +161,12 @@ export class ChatRepository {
     await this.writes;
     this.warnings.length = 0;
     let entries: { name: string; type: string }[];
-    try { entries = await this.files.list(CHAT_DIR); }
+    try {
+      await this.ready();
+      this.warnings.push(...this.migrationWarnings);
+      const data = this.documents?.();
+      entries = data ? (await data.list()).filter(entry => entry.path.startsWith('chats/')).map(entry => ({ name: entry.path.slice(6), type: entry.type })) : await this.files.list(CHAT_DIR);
+    }
     catch (e) { if (missing(e)) return []; throw e; }
     const names = entries.filter((entry) => entry.type === 'file' && entry.name.endsWith('.json') && entry.name !== 'index.json')
       .map((entry) => entry.name.slice(0, -5)).filter((id) => ID.test(id));
@@ -130,6 +197,13 @@ export class ChatRepository {
     const file = pathOf(chat.id);
     const data = fit(chat);
     return this.serialize(async () => {
+      const documents = this.documents?.();
+      if (documents) {
+        await this.ready();
+        const saved = await documents.write(this.key(chat.id), data, chat.storageRevision || '', chat.leaseOwner);
+        chat.storageRevision = saved.revision;
+        return;
+      }
       try { await this.files.write(file, data); }
       catch (e) {
         if (!missing(e)) throw e;
@@ -142,6 +216,13 @@ export class ChatRepository {
   remove(id: string): Promise<void> {
     const path = pathOf(id);
     return this.serialize(async () => {
+      const data = this.documents?.();
+      if (data) {
+        await this.ready();
+        const chat = await this.read(id);
+        if (chat) await data.remove(this.key(id), chat.storageRevision!);
+        return;
+      }
       try { await this.files.remove(path); }
       catch (e) { if (!missing(e)) throw e; }
     });
@@ -151,5 +232,38 @@ export class ChatRepository {
     const chat = await this.load(id);
     if (!chat) return;
     await this.save({ ...chat, title: title.trim().slice(0, 200) });
+  }
+
+  /** The full page and floating panel share one short server-side turn lease. */
+  async withLease<T>(chat: Chat, work: (fresh: Chat) => Promise<T>, onLost?: (e: Error) => void): Promise<T> {
+    const data = this.documents?.();
+    if (!data) return work(chat);
+    await this.ready();
+    let fresh = await this.read(chat.id);
+    if (!fresh) {
+      if (chat.storageRevision) throw new Error('This conversation was removed. Start a new conversation.');
+      await this.save(chat);
+      fresh = await this.read(chat.id);
+    }
+    const owner = Array.from(crypto.getRandomValues(new Uint8Array(16)), x => x.toString(16).padStart(2, '0')).join('');
+    const key = this.key(chat.id);
+    await data.claim(key, owner);
+    let lost: Error | undefined;
+    let renewing: Promise<unknown> | undefined;
+    const timer = setInterval(() => {
+      if (renewing || lost) return;
+      renewing = data.claim(key, owner).catch(e => { lost = e instanceof Error ? e : new Error(String(e)); onLost?.(lost); }).finally(() => { renewing = undefined; });
+    }, 30_000);
+    try {
+      fresh = await this.read(chat.id);
+      if (!fresh) throw new Error('This conversation was removed. Start a new conversation.');
+      const result = await work({ ...fresh, leaseOwner: owner });
+      if (lost) throw lost;
+      return result;
+    } finally {
+      clearInterval(timer);
+      await renewing;
+      await data.release(key, owner).catch(() => {});
+    }
   }
 }

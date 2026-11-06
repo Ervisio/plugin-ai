@@ -10,7 +10,7 @@ const repository = new ChatRepository({
   list: (path) => getSdk().files.list(path),
   mkdir: (path) => getSdk().files.mkdir(path),
   remove: (path) => getSdk().files.remove(path),
-});
+}, () => getSdk().data);
 
 export function listChats(): Promise<ChatMeta[]> { return repository.list(); }
 export function chatWarnings(): string[] { return [...repository.warnings]; }
@@ -18,3 +18,4 @@ export function saveChat(chat: Chat): Promise<void> { return repository.save(cha
 export function loadChat(id: string): Promise<Chat | undefined> { return repository.load(id); }
 export function deleteChat(id: string): Promise<void> { return repository.remove(id); }
 export function renameChat(id: string, title: string): Promise<void> { return repository.rename(id, title); }
+export function withChatLease<T>(chat: Chat, work: (fresh: Chat) => Promise<T>, onLost?: (e: Error) => void): Promise<T> { return repository.withLease(chat, work, onLost); }

@@ -3,7 +3,8 @@ import { Icon, Skeleton } from './kit';
 import { t } from './i18n';
 import { chat } from './chat/controller.ts';
 import { go, route, type View } from './router';
-import { loadSettings, loaded, settings } from './state/settings';
+import { loadSettings, loaded, retrySettings, settings, settingsError } from './state/settings';
+import { getSdk } from './sdk';
 import { NAV_ICONS } from './ui/icons';
 import { ActivityView } from './views/ActivityView';
 import { ChatView } from './views/chat/ChatView';
@@ -24,22 +25,27 @@ export function App({ native = false }: { native?: boolean }) {
   const s = settings.use();
   const view = route.use();
   const st = chat.state.use();
+  const error = settingsError.use();
+  const compact = getSdk().view?.surface === 'assistant';
 
   useEffect(() => {
     void (async () => {
       await loadSettings();
       const cfg = settings.get();
-      go(native ? 'chat' : cfg.welcomed ? cfg.landing : 'welcome');
+      go(native || compact ? 'chat' : cfg.welcomed ? cfg.landing : 'welcome');
       void chat.init();
     })();
-  }, [native]);
+  }, [native, compact]);
+
+  useEffect(() => getSdk().visibility?.onChange(hidden => { if (!hidden) void chat.refreshVisible(); }), []);
 
   if (!ready) return <div className="ai-root hue-ov"><Skeleton height={300} style={{ borderRadius: 18 }} /></div>;
-  const shown: View = !s.welcomed && !native ? 'welcome' : view === 'welcome' ? 'chat' : view;
+  const shown: View = !s.welcomed && !native && !compact && !error ? 'welcome' : view === 'welcome' ? 'chat' : view;
   if (shown === 'welcome') return <div className="ai-root hue-ov"><Welcome /></div>;
 
   return (
-    <div className={`ai-root hue-ov${native ? ' ai-root--ervisios' : ''}${shown === 'chat' ? ' ai-root--fill' : ''}`}>
+    <div className={`ai-root hue-ov${native ? ' ai-root--ervisios' : ''}${compact ? ' ai-root--compact' : ''}${shown === 'chat' ? ' ai-root--fill' : ''}`}>
+      {error && <div className="ai-storage-error" role="alert"><span>{error}</span><button type="button" onClick={() => void retrySettings()}>{t('common.retry')}</button></div>}
       <div className="ai-shell">
         <nav className="ai-nav" aria-label={t('nav.aria')}>
           {GROUPS.map((g) => (

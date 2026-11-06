@@ -7,7 +7,7 @@ import { getSdk } from '../sdk';
 import { callTool, classify, listTools, whoami, type Identity } from '../engine.ts';
 import { activeProvider, settings, updateSettings } from '../state/settings.ts';
 import { createStore } from '../state/store.ts';
-import { chatWarnings, deleteChat, listChats, loadChat, newChat, saveChat, type Chat, type ChatMeta } from '../state/chats.ts';
+import { chatWarnings, deleteChat, listChats, loadChat, newChat, saveChat, withChatLease, type Chat, type ChatMeta } from '../state/chats.ts';
 import { runTurn, type AgentEvent, type ToolCall } from './agent.ts';
 import { itemId, itemsFromMessages, reduceItems, type Item } from './items.ts';
 import { buildSystemPrompt } from './prompt.ts';
@@ -92,6 +92,17 @@ export class ChatController {
       this.patch({ list, historyError: warnings.length ? warnings.join('\n') : undefined });
     }
     catch (e) { this.patch({ historyError: (e as Error).message }); }
+  }
+
+  async refreshVisible(): Promise<void> {
+    await this.refreshList();
+    const current = this.state.get();
+    if (current.busy || current.storageError || !current.chat.storageRevision) return;
+    const fresh = await loadChat(current.chat.id).catch(() => undefined);
+    // Only replace an idle, fully persisted snapshot, never a pending draft.
+    if (fresh && !this.state.get().busy && this.state.get().chat === current.chat) {
+      this.patch({ chat: fresh, items: itemsFromMessages(fresh.messages) });
+    }
   }
 
   private async persist(chat: Chat): Promise<void> {
@@ -179,9 +190,31 @@ export class ChatController {
     return '';
   }
 
-  async send(text: string): Promise<void> {
+  async send(text: string, accepted?: () => void): Promise<void> {
+    await this.withTurnLease(text, () => this.sendTurn(text), accepted);
+  }
+
+  private async withTurnLease(text: string, work: () => Promise<void>, accepted?: () => void): Promise<void> {
+    const current = this.state.get();
+    if (current.busy || current.storageError || !text.trim()) return;
+    this.patch({ busy: true });
+    try {
+      await withChatLease(current.chat, async fresh => {
+        this.patch({ chat: fresh, items: itemsFromMessages(fresh.messages) });
+        accepted?.();
+        await work();
+      }, e => { this.stop(); this.patch({ storageError: e.message }); });
+    } catch (e) {
+      this.addItem({ kind: 'notice', id: itemId(), tone: 'err', text: (e as Error).message });
+    } finally {
+      const chat = { ...this.state.get().chat };
+      delete chat.leaseOwner;
+      this.patch({ busy: false, chat });
+    }
+  }
+
+  private async sendTurn(text: string): Promise<void> {
     const s0 = this.state.get();
-    if (s0.busy || !text.trim()) return;
     const msg: Msg = { role: 'user', content: [{ type: 'text', text }] };
     const prompt: Chat = { ...s0.chat, messages: [...s0.chat.messages, msg] };
     this.patch({ chat: prompt, items: [...s0.items, { kind: 'user', id: itemId(), text }], busy: true, planning: '' });
@@ -243,6 +276,7 @@ export class ChatController {
           const snapshot: Chat = { ...chat, messages: [...messages], usage: { input: chat.usage.input + usage.input, output: chat.usage.output + usage.output } };
           this.patch({ chat: snapshot });
           await this.persist(snapshot);
+          chat.storageRevision = snapshot.storageRevision;
         },
       });
       this.flushNow();
@@ -276,9 +310,12 @@ export class ChatController {
   }
 
   /** `!command`: run it now, as the person typed it, and let the model see what came out. */
-  async shell(command: string): Promise<void> {
+  async shell(command: string, accepted?: () => void): Promise<void> {
+    await this.withTurnLease(command, () => this.shellTurn(command), accepted);
+  }
+
+  private async shellTurn(command: string): Promise<void> {
     const s0 = this.state.get();
-    if (s0.busy || !command.trim()) return;
     const root = settings.get().root;
     const id = `sh${Date.now().toString(36)}`;
     const call: ToolCall = { id, name: 'shell_exec', input: { command } };
